@@ -354,35 +354,43 @@ Module.preRun = Module.preRun || [ ];
     async function loadGameZip() {
 
         try {
-            let url = 'https://corsproxy.io/?' + encodeURIComponent('https://small.fileditchstuff.me/s7/tgLxOrdVydfwmQpxtPs.zip');
-            let response = await fetch(url);
-
-            if (!response.ok) {
-                reportError("Could not load game.zip: " + response.status + " " + response.statusText);
+            let totalSize = 0;
+            for (let i = 1; i <= 11; i++) {
+                let partUrl = 'game.part' + i.toString().padStart(3, '0') + '.zip';
+                let response = await fetch(partUrl, { method: 'HEAD' });
+                if (!response.ok) {
+                    reportError("Could not load " + partUrl + ": " + response.status + " " + response.statusText);
+                }
+                let size = parseInt(response.headers.get('Content-Length'), 10);
+                if (!Number.isNaN(size)) totalSize += size;
             }
+            gameZipSize = totalSize;
 
-            gameZipSize = parseInt(response.headers.get('Content-Length'), 10);
-            if(Number.isNaN(gameZipSize)) gameZipSize = 0;
-
-            let reader = await response.body.getReader();
-
-            let f = FS.open('/game.zip', 'w');
-
-            while (true) {
-
-                let { done, value } = await reader.read();
-
-                if (done) {
-                    break;
+            let first = true;
+            for (let i = 1; i <= 11; i++) {
+                let partUrl = window.gameZipURL + '.part' + i.toString().padStart(3, '0') + '.zip';
+                let response = await fetch(partUrl);
+                if (!response.ok) {
+                    reportError("Could not load " + partUrl + ": " + response.status + " " + response.statusText);
                 }
 
-                FS.write(f, value, 0, value.length);
-                gameZipDownloaded += value.length;
+                let reader = response.body.getReader();
+                let mode = first ? 'w' : 'a';
+                let f = FS.open('/game.zip', mode);
+                first = false;
 
-                updateDownloadProgress();
+                while (true) {
+                    let { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    FS.write(f, value, 0, value.length);
+                    gameZipDownloaded += value.length;
+                    updateDownloadProgress();
+                }
+
+                FS.close(f);
             }
-
-            FS.close(f);
 
         } catch (e) {
             reportError("Could not download game.zip", e);
