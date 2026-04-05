@@ -368,7 +368,7 @@ Module.preRun = Module.preRun || [ ];
 
             let first = true;
             for (let i = 1; i <= 11; i++) {
-                let partUrl = window.gameZipURL + '.part' + i.toString().padStart(3, '0') + '.zip';
+                let partUrl = 'game.part' + i.toString().padStart(3, '0') + '.zip';
                 let response = await fetch(partUrl);
                 if (!response.ok) {
                     reportError("Could not load " + partUrl + ": " + response.status + " " + response.statusText);
